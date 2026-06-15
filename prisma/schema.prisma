@@ -1,0 +1,114 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  OPERATOR
+  ADMIN
+}
+
+enum RequestStatus {
+  UNVERIFIED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CodeStatus {
+  ACTIVE
+  REVOKED
+  USED
+}
+
+model User {
+  id          String        @id @default(uuid())
+  username    String        @unique
+  email       String        @unique
+  firstName   String        @default("")
+  lastName    String        @default("")
+  phone       String        @default("")
+  location    String        @default("")
+  bio         String        @default("")
+  role        Role          @default(OPERATOR)
+  password    String        @default("$2b$10$wVXZG.A6r4m5kP.NlOq.zueyZ3W/0LqjWl7S5E7H2.LzUv7Q2P2G6") // password123
+  avatar      String?       // Base64 String
+  joinDate    DateTime      @default(now())
+  loginCount        Int           @default(0)
+  loginOtp          String?       // 2FA OTP
+  loginOtpExpiresAt DateTime?     // Expiration for 2FA OTP
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  activities  ActivityLog[]
+  histories   HistoryEntry[]
+  fishList    FishList?
+  settings    AppSettings?
+}
+
+model AccessRequest {
+  id              String        @id @default(uuid())
+  name            String
+  email           String
+  username        String        @unique
+  reason          String
+  password        String?       // Hashed password during registration
+  status          RequestStatus @default(UNVERIFIED)
+  verificationOtp String?
+  otpExpiresAt    DateTime?
+  approvedBy      String?
+  rejectedBy      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model AccessCode {
+  id          String     @id @default(uuid())
+  username    String     @unique
+  name        String
+  email       String
+  code        String     // Hashed code (bcrypt)
+  plainCode   String?    // Plain-text code for admin display
+  status      CodeStatus @default(ACTIVE)
+  requestId   String?
+  createdAt   DateTime   @default(now())
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String
+  description String
+  timestamp   DateTime @default(now())
+}
+
+model HistoryEntry {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateKey   String   // Format: YYYY-MM-DD
+  data      Json     // Feeding data details
+  createdAt DateTime @default(now())
+
+  @@unique([userId, dateKey])
+}
+
+model FishList {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fishData  Json     // Array list of fish
+  updatedAt DateTime @updatedAt
+}
+
+model AppSettings {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  settingsData Json     // App settings
+  updatedAt    DateTime @updatedAt
+}
