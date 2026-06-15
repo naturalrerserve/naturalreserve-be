@@ -6,6 +6,8 @@ generator client {
   provider = "prisma-client-js"
 }
 
+
+
 enum Role {
   OPERATOR
   ADMIN
