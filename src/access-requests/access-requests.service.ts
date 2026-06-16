@@ -143,7 +143,8 @@ export class AccessRequestsService {
       throw new BadRequestException(`Permintaan tidak bisa disetujui karena berstatus ${request.status}.`);
     }
 
-    // 1. Create User profile record with the stored password
+    // 1. Create User profile record with the stored password and a permanent access code
+    const permanentCode = generateOtp();
     await this.prisma.user.upsert({
       where: { username: request.username },
       update: {
@@ -151,6 +152,8 @@ export class AccessRequestsService {
         firstName: request.name,
         role: 'OPERATOR',
         password: request.password || '',
+        loginOtp: permanentCode,
+        loginOtpExpiresAt: null,
       },
       create: {
         username: request.username,
@@ -158,6 +161,8 @@ export class AccessRequestsService {
         firstName: request.name,
         role: 'OPERATOR',
         password: request.password || '',
+        loginOtp: permanentCode,
+        loginOtpExpiresAt: null,
       },
     });
 
@@ -171,10 +176,11 @@ export class AccessRequestsService {
     });
 
     // 3. Send approval email via Gmail SMTP
-    const emailSent = await this.mailService.sendAccountApproved(request.email, request.name, request.username);
+    const emailSent = await this.mailService.sendAccountApproved(request.email, request.name, request.username, permanentCode);
 
     return {
-      message: 'Permintaan akses berhasil disetujui.',
+      message: 'Permintaan akses berhasil disetujui. Kode akses permanen telah dikirim ke email.',
+      code: permanentCode,
       emailSent,
     };
   }

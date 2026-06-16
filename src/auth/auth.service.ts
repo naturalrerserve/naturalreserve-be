@@ -84,26 +84,30 @@ export class AuthService {
       throw new UnauthorizedException('Username atau password salah.');
     }
 
-    // 3. Generate OTP
-    const otp = generateOtp();
-    const otpExpiresAt = new Date();
-    otpExpiresAt.setMinutes(otpExpiresAt.getMinutes() + 5);
+    // 3. Cek OTP permanen
+    let otp = user.loginOtp;
+    let message = 'Silakan masukkan Kode Akses Permanen Anda untuk login.';
 
-    // 4. Save OTP to user
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        loginOtp: otp,
-        loginOtpExpiresAt: otpExpiresAt,
-      },
-    });
+    if (!otp) {
+      // Jika belum ada, buat OTP permanen
+      otp = generateOtp();
+      
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          loginOtp: otp,
+          loginOtpExpiresAt: null, // Berlaku selamanya
+        },
+      });
 
-    // 5. Send OTP Email
-    await this.mailService.sendOtp(user.email, user.firstName, otp);
+      // Kirim via email HANYA JIKA baru pertama kali dibuat
+      await this.mailService.sendOtp(user.email, user.firstName, otp);
+      message = 'Kode Akses Permanen telah dikirim ke email Anda. Kode ini dapat digunakan seterusnya untuk login.';
+    }
 
     return {
       requiresOtp: true,
-      message: 'Kode OTP telah dikirim ke email Anda. Silakan masukkan kode untuk melanjutkan login.',
+      message,
     };
   }
 
@@ -123,16 +127,13 @@ export class AuthService {
       throw new BadRequestException('Kode verifikasi salah.');
     }
 
-    if (isExpired(user.loginOtpExpiresAt)) {
-      throw new BadRequestException('Kode verifikasi telah kedaluwarsa. Silakan login kembali.');
-    }
+    // Hapus logika expired karena kode sekarang permanen
+    // if (isExpired(user.loginOtpExpiresAt)) { ... }
 
-    // 1. Clear OTP and increment login count
+    // 1. Increment login count (TIDAK menghapus loginOtp)
     const updatedUser = await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        loginOtp: null,
-        loginOtpExpiresAt: null,
         loginCount: {
           increment: 1,
         },
