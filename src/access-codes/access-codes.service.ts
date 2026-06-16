@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
-import { generateAccessCode } from '../common/utils';
+import { generateAccessCode, generateOtp } from '../common/utils';
 import { GenerateCodeDto } from './dto/generate-code.dto';
 import * as bcrypt from 'bcrypt';
 
@@ -49,7 +49,8 @@ export class AccessCodesService {
     const rawPassword = customCode ? customCode.trim() : 'password123';
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
-    // 3. Create User profile record with password
+    // 3. Create User profile record with password and permanent access code
+    const permanentCode = generateOtp();
     await this.prisma.user.upsert({
       where: { username: cleanUsername },
       update: {
@@ -57,6 +58,8 @@ export class AccessCodesService {
         firstName: name,
         role: 'OPERATOR',
         password: hashedPassword,
+        loginOtp: permanentCode,
+        loginOtpExpiresAt: null,
       },
       create: {
         username: cleanUsername,
@@ -64,15 +67,17 @@ export class AccessCodesService {
         firstName: name,
         role: 'OPERATOR',
         password: hashedPassword,
+        loginOtp: permanentCode,
+        loginOtpExpiresAt: null,
       },
     });
 
-    // 4. Send email (we use sendAccountApproved because we don't send the plaintext password via email for security reasons, the admin should communicate it or they use password123)
-    const emailSent = await this.mailService.sendAccountApproved(email.trim(), name, cleanUsername);
+    // 4. Send email
+    const emailSent = await this.mailService.sendAccountApproved(email.trim(), name, cleanUsername, permanentCode);
 
     return {
       message: 'Akun berhasil dibuat.',
-      code: rawPassword,
+      code: permanentCode,
       emailSent,
     };
   }

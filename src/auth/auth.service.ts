@@ -5,7 +5,9 @@ import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { VerifyLoginDto } from './dto/verify-login.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import { MailService } from '../mail/mail.service';
+import { OAuth2Client } from 'google-auth-library';
 import { generateOtp, isExpired } from '../common/utils';
 
 @Injectable()
@@ -15,11 +17,15 @@ export class AuthService {
     admin: process.env.ADMIN_PASSWORD || 'Admin@NR2024!',
   };
 
+  private googleClient: OAuth2Client;
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private mailService: MailService,
-  ) {}
+  ) {
+    this.googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+  }
 
   async adminLogin(dto: AdminLoginDto) {
     const { username, password } = dto;
@@ -164,5 +170,70 @@ export class AuthService {
         loginCount: updatedUser.loginCount,
       },
     };
+  }
+
+  async googleLogin(dto: GoogleLoginDto) {
+    const { credential } = dto;
+
+    try {
+      // 1. Verify the Google ID Token
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload || !payload.email) {
+        throw new UnauthorizedException('Token Google tidak valid.');
+      }
+
+      // 2. Cek apakah email sudah terdaftar di database (Logika Opsi B)
+      const user = await this.prisma.user.findFirst({
+        where: { email: payload.email },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('Akun Anda belum terdaftar. Silakan ajukan Permintaan Akses terlebih dahulu melalui halaman depan.');
+      }
+
+      // 3. Update login count dan avatar jika perlu
+      const updatedUser = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          loginCount: { increment: 1 },
+          avatar: user.avatar || payload.picture, // Gunakan avatar Google jika belum punya
+        },
+      });
+
+      // 4. Generate JWT
+      const jwtPayload = {
+        sub: updatedUser.id,
+        username: updatedUser.username,
+        role: updatedUser.role,
+      };
+
+      return {
+        access_token: this.jwtService.sign(jwtPayload),
+        user: {
+          id: updatedUser.id,
+          username: updatedUser.username,
+          email: updatedUser.email,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          role: updatedUser.role,
+          avatar: updatedUser.avatar,
+          phone: updatedUser.phone,
+          location: updatedUser.location,
+          bio: updatedUser.bio,
+          joinDate: updatedUser.joinDate.toISOString(),
+          loginCount: updatedUser.loginCount,
+        },
+      };
+    } catch (error: any) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('Gagal melakukan autentikasi dengan Google.');
+    }
   }
 }
