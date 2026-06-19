@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
-import { generateOtp, generateAccessCode, isExpired } from '../common/utils';
+import { generateOtp, isExpired } from '../common/utils';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import * as bcrypt from 'bcrypt';
@@ -143,8 +143,7 @@ export class AccessRequestsService {
       throw new BadRequestException(`Permintaan tidak bisa disetujui karena berstatus ${request.status}.`);
     }
 
-    // 1. Create User profile record with the stored password and a permanent access code
-    const permanentCode = generateOtp();
+    // 1. Create User profile record with the stored password
     await this.prisma.user.upsert({
       where: { username: request.username },
       update: {
@@ -152,8 +151,6 @@ export class AccessRequestsService {
         firstName: request.name,
         role: 'OPERATOR',
         password: request.password || '',
-        loginOtp: permanentCode,
-        loginOtpExpiresAt: null,
       },
       create: {
         username: request.username,
@@ -161,8 +158,6 @@ export class AccessRequestsService {
         firstName: request.name,
         role: 'OPERATOR',
         password: request.password || '',
-        loginOtp: permanentCode,
-        loginOtpExpiresAt: null,
       },
     });
 
@@ -176,11 +171,10 @@ export class AccessRequestsService {
     });
 
     // 3. Send approval email via Gmail SMTP
-    const emailSent = await this.mailService.sendAccountApproved(request.email, request.name, request.username, permanentCode);
+    const emailSent = await this.mailService.sendAccountApproved(request.email, request.name, request.username);
 
     return {
-      message: 'Permintaan akses berhasil disetujui. Kode akses permanen telah dikirim ke email.',
-      code: permanentCode,
+      message: 'Permintaan akses berhasil disetujui. Pemberitahuan telah dikirim ke email.',
       emailSent,
     };
   }

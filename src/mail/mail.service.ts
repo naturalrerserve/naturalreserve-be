@@ -96,7 +96,7 @@ export class MailService {
     return success;
   }
 
-  async sendAccountApproved(email: string, name: string, username: string, accessCode: string): Promise<boolean> {
+  async sendAccountApproved(email: string, name: string, username: string): Promise<boolean> {
     const subject = 'Permintaan Akses Disetujui — Natural Reserve';
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const html = `
@@ -110,10 +110,6 @@ export class MailService {
           <tr>
             <td style="padding: 12px; font-weight: bold; border-bottom: 1px solid #e2e8f0; width: 120px;">Username:</td>
             <td style="padding: 12px; font-family: monospace; font-size: 16px; border-bottom: 1px solid #e2e8f0; color: #0d9488;">${username}</td>
-          </tr>
-          <tr>
-            <td style="padding: 12px; font-weight: bold; border-bottom: 1px solid #e2e8f0; width: 120px;">Kode Akses:</td>
-            <td style="padding: 12px; font-family: monospace; font-size: 18px; border-bottom: 1px solid #e2e8f0; color: #ef4444; font-weight: bold; letter-spacing: 2px;">${accessCode}</td>
           </tr>
         </table>
         <p>Silakan klik tombol di bawah untuk menuju ke halaman login:</p>
