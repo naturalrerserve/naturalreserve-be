@@ -74,6 +74,27 @@ export class AuthService {
     });
 
     if (!user) {
+      // 1b. Check if there's a pending access request
+      const accessReq = await this.prisma.accessRequest.findFirst({
+        where: { username: cleanUsername },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (accessReq) {
+        const isPasswordValid = await bcrypt.compare(password, accessReq.password);
+        if (!isPasswordValid) {
+          throw new UnauthorizedException('Username atau password salah.');
+        }
+
+        if (accessReq.status === 'PENDING') {
+          throw new UnauthorizedException('Akun Anda sedang menunggu persetujuan Admin.');
+        } else if (accessReq.status === 'UNVERIFIED') {
+          throw new UnauthorizedException('Email Anda belum diverifikasi. Silakan periksa email Anda.');
+        } else if (accessReq.status === 'REJECTED') {
+          throw new UnauthorizedException('Permintaan akses Anda telah ditolak oleh Admin.');
+        }
+      }
+
       throw new UnauthorizedException('Username atau password salah.');
     }
 
