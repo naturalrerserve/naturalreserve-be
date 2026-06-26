@@ -2,7 +2,10 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
-const connectionString = "postgresql://postgres:lpPACAWodTquiAZDgJWmwEQIwmTcrnTK@shuttle.proxy.rlwy.net:54822/railway";
+// SECURITY: JANGAN hardcode credentials di sini!
+import 'dotenv/config';
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) throw new Error('[SECURITY] DATABASE_URL tidak diset!');
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });

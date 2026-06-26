@@ -3,7 +3,11 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import * as bcrypt from 'bcrypt';
 
-const connectionString = "postgresql://postgres:lpPACAWodTquiAZDgJWmwEQIwmTcrnTK@shuttle.proxy.rlwy.net:54822/railway";
+// SECURITY: JANGAN hardcode credentials di sini!
+// Gunakan: DATABASE_URL=... npx ts-node create-admin-online.ts
+import 'dotenv/config';
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) throw new Error('[SECURITY] DATABASE_URL tidak diset!');
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
@@ -11,7 +15,9 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   const adminUsername = 'admin';
   const adminEmail = 'admin@naturalreserve.com';
-  const plainPassword = 'adminpassword123';
+  // SECURITY: Password diambil dari env var, BUKAN hardcode di sini
+  const plainPassword = process.env.ADMIN_PASSWORD;
+  if (!plainPassword) throw new Error('[SECURITY] Set env var ADMIN_PASSWORD terlebih dahulu!');
 
   const existingAdmin = await prisma.user.findFirst({
     where: { role: 'ADMIN' },

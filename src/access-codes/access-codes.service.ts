@@ -45,8 +45,8 @@ export class AccessCodesService {
       throw new ConflictException('Username sudah terdaftar.');
     }
 
-    // 2. Generate/Validate password
-    const rawPassword = customCode ? customCode.trim() : 'password123';
+    // SECURITY: Jika tidak ada kode custom, generate password acak yang aman
+    const rawPassword = customCode ? customCode.trim() : generateAccessCode();
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
     // 3. Create User profile record with password

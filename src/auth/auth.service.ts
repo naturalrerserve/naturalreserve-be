@@ -10,8 +10,14 @@ import { MailService } from '../mail/mail.service';
 @Injectable()
 export class AuthService {
   // Static admin user — only one admin role
+  // SECURITY: Password WAJIB diset via environment variable ADMIN_PASSWORD
+  // Tidak ada fallback hardcode — server akan error jika env var tidak diset
   private readonly ADMIN_USERS: Record<string, string> = {
-    admin: process.env.ADMIN_PASSWORD || 'Admin@NR2024!',
+    admin: (() => {
+      const pwd = process.env.ADMIN_PASSWORD;
+      if (!pwd) throw new Error('[SECURITY] ADMIN_PASSWORD environment variable is not set!');
+      return pwd;
+    })(),
   };
 
   constructor(

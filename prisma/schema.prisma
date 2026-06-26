@@ -36,7 +36,7 @@ model User {
   location    String        @default("")
   bio         String        @default("")
   role        Role          @default(OPERATOR)
-  password    String        @default("$2b$10$wVXZG.A6r4m5kP.NlOq.zueyZ3W/0LqjWl7S5E7H2.LzUv7Q2P2G6") // password123
+  password    String        @default("$2b$10$wVXZG.A6r4m5kP.NlOq.zueyZ3W/0LqjWl7S5E7H2.LzUv7Q2P2G6")
   avatar      String?       // Base64 String
   joinDate    DateTime      @default(now())
   loginCount        Int           @default(0)
