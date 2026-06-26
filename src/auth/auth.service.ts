@@ -81,7 +81,7 @@ export class AuthService {
       });
 
       if (accessReq) {
-        const isPasswordValid = await bcrypt.compare(password, accessReq.password);
+        const isPasswordValid = await bcrypt.compare(password, accessReq.password || '');
         if (!isPasswordValid) {
           throw new UnauthorizedException('Username atau password salah.');
         }
